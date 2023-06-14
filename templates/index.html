@@ -13,15 +13,166 @@
 
     <title>Document</title>
     <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
       body {
-        display: grid;
-        place-items: center;
+        font-family: sans-serif;
+      }
+      .container {
+        background-color: #312e2b;
+        min-width: 100vw;
+        width: 100%;
         min-height: 100vh;
+        display: flex;
+      }
+      .black-3c85d {
+        background-color: #779556 !important;
+      }
+      .white-1e1d7 {
+        background-color: #eeeed2 !important;
+      }
+      .piece-417db:hover {
+        cursor: grab;
+      }
+      .square-55d63 {
+        display: grid !important;
+        place-items: center;
+      }
+
+      .content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        align-items: center;
+        padding-inline: 8%;
+        gap: 5rem;
+        overflow-x: hidden;
+      }
+      .content > div {
+        width: 750px;
+      }
+      .myBoard {
+        width: 750px;
+        pointer-events: none;
+        position: relative;
+      }
+      .myBoard.active {
+        pointer-events: all;
+      }
+      .myBoard::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.6);
+      }
+      .myBoard.active::after {
+        background-color: transparent;
+        width: 0;
+        height: 0;
+      }
+      .player_name_input {
+        outline: none;
+        border: none;
+        padding: 10px 20px;
+        width: 90%;
+        margin: auto;
+      }
+      .start_button {
+        width: 90%;
+        margin: 2rem auto;
+        outline: none;
+        border: none;
+        padding-block: 1rem;
+        cursor: pointer;
+        color: #fff;
+        background-color: #779556;
+        font-weight: 700;
+        font-size: 22px;
+        text-transform: uppercase;
       }
     </style>
   </head>
   <body>
-    <div id="myBoard" style="width: 700px; margin: auto"></div>
+    <div class="container">
+      <div class="content">
+        <div style="display: flex; flex-direction: column; gap: 1rem">
+          <div style="display: flex; gap: 1rem; align-items: center">
+            <img
+              src="{{ url_for('static', filename='images/noavatar.gif') }}"
+              style="width: 40px; height: 40px; border-radius: 5px"
+            />
+            <p style="font-weight: 600; color: #fff" id="computer_name">
+              Computer
+            </p>
+          </div>
+          <div id="myBoard" class="myBoard"></div>
+          <div style="display: flex; gap: 1rem; align-items: center">
+            <img
+              src="{{ url_for('static', filename='images/noavatar.gif') }}"
+              style="width: 40px; height: 40px; border-radius: 5px"
+            />
+            <p style="font-weight: 600; color: #fff" id="player_name"></p>
+          </div>
+        </div>
+        <div style="height: 60vh; width: 350px; position: relative">
+          <div
+            style="
+              position: absolute;
+              inset: 0;
+              background-color: #272522;
+              opacity: 0.5;
+            "
+          ></div>
+          <div
+            style="
+              z-index: 9999;
+              position: absolute;
+              inset: 0;
+              padding-block: 3rem;
+              width: 100%;
+            "
+          >
+            <div style="width: 100%; display: grid">
+              <h1
+                style="margin: auto; text-align: center; color: white"
+                class="direct-menu-header-title"
+              >
+                Play Chess
+              </h1>
+              <img
+                src="{{ url_for('static', filename='images/play.svg') }}"
+                width="88"
+                height="88"
+                style="margin: 2rem auto"
+              />
+              <p
+                style="
+                  width: 90%;
+                  display: block;
+                  margin: 2rem auto 0.5rem;
+                  color: #fff;
+                  font-size: 14px;
+                "
+              >
+                Please,write your name before start playing
+              </p>
+              <input
+                type="text"
+                class="player_name_input"
+                placeholder="Your name"
+              />
+              <button class="start_button">Start</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <audio
+      id="sound"
+      src="{{ url_for('static', filename='sounds/move.mp3') }}"
+    ></audio>
     <script
       src="https://code.jquery.com/jquery-3.7.0.js"
       integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM="
@@ -37,6 +188,7 @@
     ></script>
     <script>
       $(function () {
+        let started = false;
         var game = new Chess();
         var board = null;
         var $status = $("#status");
@@ -44,6 +196,28 @@
         var $pgn = $("#pgn");
         var whiteSquareGrey = "#c37d448f";
         var blackSquareGrey = "#cd9a70";
+
+        $(window).on("load", () => {
+          $.get("/");
+        });
+        $(".start_button").on("click", () => {
+          if (started) {
+            window.history.go("/");
+          } else {
+            const name = $(".player_name_input").val()
+              ? $(".player_name_input").val()
+              : "Guest";
+            $("#player_name").text(name);
+            $(".myBoard").addClass("active");
+            $(".player_name_input").css({
+              cursor: "not-allowed",
+              pointerEvents: "none",
+            });
+            $(".start_button").html("restart");
+            started = true;
+          }
+        });
+
         function removeGreySquares() {
           $("#myBoard .square-55d63").css("background", "");
         }
@@ -105,8 +279,11 @@
           // illegal move
           if (move === null) return "snapback";
           else {
+            var audio = document.getElementById("sound");
+            audio.play();
             $.get(`/move?name=${move.from + move.to}`, function (data) {
-              console.log(data);
+              var audio = document.getElementById("sound");
+              audio.play();
 
               // Update the board position with the computer's move
               game.load(data.fen);
